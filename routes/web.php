@@ -18,7 +18,6 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::resource('skills', SkillController::class)->only([
-    'index'
-]);
+Route::get('skills', [SkillController::class, 'index'])->name('skills.index');
 Route::get('skills/compare', [SkillController::class, 'compare']);
+Route::post('skills/compare', [SkillController::class, 'store'])->name('skills.compare.store');
