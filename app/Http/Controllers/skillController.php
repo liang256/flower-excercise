@@ -36,6 +36,20 @@ class SkillController extends Controller
 
         $popset = array_pop($compareSchedule);
 
+        // Init score table
+        $skillScores = session()->pull('skillScores');
+        if (!$skillScores) {
+            $skillScores = [];
+            foreach ($list as $skill) {
+                $skillScores[$skill] = 0;
+            }
+
+            session([
+                'skillScores' => $skillScores
+            ]);
+        }
+        $skillScores = collect($skillScores)->sort()->reverse();
+
         // Store compare schedule
         session([
             'compareSchedule' => $compareSchedule
@@ -51,6 +65,7 @@ class SkillController extends Controller
             [
                 'compareSchedule' => $compareSchedule,
                 'compareResult' => $compareResult ?? [],
+                'skillScores' => $skillScores,
                 'set' => $popset
             ]
         );
@@ -61,6 +76,8 @@ class SkillController extends Controller
      */
     public function compare()
     {
+        $skillScores = session()->get('skillScores');
+        var_dump($skillScores);
         $opA = (object) [
             'id' => request('a'),
             'name' => self::SKILLS[(int) request('a')]
@@ -96,8 +113,13 @@ class SkillController extends Controller
         $result = session()->has('compareResult') ? session()->get('compareResult') : [];
         $result[request('compareSet')] = request('winner');
 
+        $winnerSkill = self::SKILLS[(int) request('winner')];
+        $skillScores = session()->get('skillScores');
+        $skillScores[$winnerSkill] += 1;
+
         session([
-            'compareResult' => $result
+            'compareResult' => $result,
+            'skillScores' => $skillScores
         ]);
 
         // Pop new set from driver
