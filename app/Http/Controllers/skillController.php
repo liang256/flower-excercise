@@ -21,7 +21,6 @@ class SkillController extends Controller
     public function index()
     {
         $list = self::SKILLS;
-        // Redis::set('skills', $list);
         $len = count($list);
         $rounds = $len - 1;
         $compareSchedule = [];
@@ -30,35 +29,29 @@ class SkillController extends Controller
         for ($i = 0; $i < $len - 1; $i++) {
             for ($j = 0; $j < $rounds; $j++) {
                 // Redis::lpush('skills', $list[$i] . ' vs. ' . $list[$rounds  - $j]);
-                // printf(
-                //     "%s:%s vs %s:%s</br>",
-                //     $i,
-                //     $list[$i],
-                //     $rounds  - $j,
-                //     $list[$rounds - $j]
-                // );
                 $compareSchedule[]= [$i, $rounds - $j];
             }
             $rounds--;
         }
-        // dd($compareSchedule);
-        Redis::set(
-            'compareSchedule',
-            json_encode(
-                $compareSchedule
-            )
-        );
 
-        $compareResult = json_decode(
-            Redis::get('compareResult'),
-            true
-        );
+        $popset = array_pop($compareSchedule);
+
+        // Store compare schedule
+        session([
+            'compareSchedule' => $compareSchedule
+        ]);
+
+        // Retrive result
+        if (session()->has('compareResult')) {
+            $compareResult = session()->pull('compareResult');
+        }
 
         return view(
             'skills.index',
             [
-            'compareSchedule' => $compareSchedule,
-            'compareResult' => $compareResult
+                'compareSchedule' => $compareSchedule,
+                'compareResult' => $compareResult ?? [],
+                'set' => $popset
             ]
         );
     }
@@ -82,8 +75,8 @@ class SkillController extends Controller
         return view(
             'skills.compare',
             [
-            'opA' => $opA,
-            'opB' => $opB
+                'opA' => $opA,
+                'opB' => $opB
             ]
         );
     }
@@ -91,7 +84,7 @@ class SkillController extends Controller
     /**
      * Store compared result to the driver
      */
-    public function store(Request $request)
+    public function store()
     {
         /**
          * result = [
@@ -100,51 +93,27 @@ class SkillController extends Controller
          *     ...
          * ]
          */
-        $result = json_decode(
-            Redis::get('compareResult'),
-            true
-        ) ?? [];
+        $result = session()->has('compareResult') ? session()->get('compareResult') : [];
         $result[request('compareSet')] = request('winner');
-        // dd($result);
 
-        Redis::set(
-            'compareResult',
-            json_encode(
-                $result
-            )
-        );
+        session([
+            'compareResult' => $result
+        ]);
 
         // Pop new set from driver
-        $schedule = json_decode(
-            Redis::get('compareSchedule')
-        );
+        $schedule = session()->get('compareSchedule');
 
         $popset = array_pop($schedule);
 
-        Redis::set(
-            'compareSchedule',
-            json_encode($schedule)
-        );
+        session([
+            'compareSchedule' => $schedule
+        ]);
 
         if ($popset) {
-            $opA = (object) [
-                'id' => $popset[0],
-                'name' => self::SKILLS[(int) $popset[0]]
-            ];
-    
-            $opB = (object) [
-                'id' => $popset[1],
-                'name' => self::SKILLS[(int) $popset[1]]
-            ];
-    
-            // dd($opA, $opB);
-            return view(
-                'skills.compare',
-                [
-                'opA' => $opA,
-                'opB' => $opB
-                ]
-            );
+            return redirect()->route('skills.compare', [
+                'a' => $popset[0],
+                'b' => $popset[1]
+            ]);
         }
 
         return redirect(route('skills.index'));
