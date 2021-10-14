@@ -21,3 +21,6 @@ Route::get('/', function () {
 Route::get('skills', [SkillController::class, 'index'])->name('skills.index');
 Route::get('skills/compare', [SkillController::class, 'compare'])->name('skills.compare');
 Route::post('skills/compare', [SkillController::class, 'store'])->name('skills.compare.store');
+Auth::routes();
+
+Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
