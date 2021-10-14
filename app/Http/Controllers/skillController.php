@@ -23,15 +23,16 @@ class SkillController extends Controller
         $list = self::SKILLS;
         $len = count($list);
         $rounds = $len - 1;
+        $start = 1;
         $compareSchedule = [];
 
         // Build schedule
         for ($i = 0; $i < $len - 1; $i++) {
-            for ($j = 0; $j < $rounds; $j++) {
+            for ($j = $start; $j < $len; $j++) {
                 // Redis::lpush('skills', $list[$i] . ' vs. ' . $list[$rounds  - $j]);
-                $compareSchedule[]= [$i, $rounds - $j];
+                $compareSchedule[]= [$i, $j];
             }
-            $rounds--;
+            $start++;
         }
 
         $popset = array_pop($compareSchedule);
