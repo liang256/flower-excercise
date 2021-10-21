@@ -19,55 +19,18 @@ class SkillController extends Controller
      * Create compare sechule
      */
     public function index()
-    {
-        $list = self::SKILLS;
-        $len = count($list);
-        $rounds = $len - 1;
-        $start = 1;
-        $compareSchedule = [];
-
-        // Build schedule
-        for ($i = 0; $i < $len - 1; $i++) {
-            for ($j = $start; $j < $len; $j++) {
-                // Redis::lpush('skills', $list[$i] . ' vs. ' . $list[$rounds  - $j]);
-                $compareSchedule[]= [$i, $j];
-            }
-            $start++;
-        }
-
-        $popset = array_pop($compareSchedule);
-
-        // Init score table
-        $skillScores = session()->pull('skillScores');
-        if (!$skillScores) {
-            $skillScores = [];
-            foreach ($list as $skill) {
-                $skillScores[$skill] = 0;
-            }
-
-            session([
-                'skillScores' => $skillScores
-            ]);
-        }
+    {        
+        $skillScores = session()->get('skillScores');
         $skillScores = collect($skillScores)->sort()->reverse();
 
-        // Store compare schedule
-        session([
-            'compareSchedule' => $compareSchedule
-        ]);
-
         // Retrive result
-        if (session()->has('compareResult')) {
-            $compareResult = session()->pull('compareResult');
-        }
+        $compareResult = session()->get('compareResult');
 
         return view(
             'skills.index',
             [
-                'compareSchedule' => $compareSchedule,
                 'compareResult' => $compareResult ?? [],
-                'skillScores' => $skillScores,
-                'set' => $popset
+                'skillScores' => $skillScores ?? [],
             ]
         );
     }
@@ -77,16 +40,53 @@ class SkillController extends Controller
      */
     public function compare()
     {
-        $skillScores = session()->get('skillScores');
-        var_dump($skillScores);
+        // If schedule empty, rebuild one and refresh score and compare-result sessions
+        // else pop out one set from the schedule
+        if (empty(session()->get('compareSchedule'))) {
+            $list = self::SKILLS;
+            $len = count($list);
+            $rounds = $len - 1;
+            $start = 1;
+            $compareSchedule = [];
+
+            // Build schedule
+            for ($i = 0; $i < $len - 1; $i++) {
+                for ($j = $start; $j < $len; $j++) {
+                    // Redis::lpush('skills', $list[$i] . ' vs. ' . $list[$rounds  - $j]);
+                    $compareSchedule[]= [$i, $j];
+                }
+                $start++;
+            }
+
+            $pop = array_pop($compareSchedule);
+        
+            // Init score table
+            $skillScores = [];
+            foreach (self::SKILLS as $skill) {
+                $skillScores[$skill] = 0;
+            }
+
+            session([
+                'skillScores' => $skillScores,
+                'compareResult' => [],
+                'compareSchedule' => $compareSchedule
+            ]);
+        } else {
+            $schedule = session()->get('compareSchedule');
+            $pop =  array_pop($schedule);
+            session([
+                'compareSchedule' => $schedule
+            ]);
+        }
+
         $opA = (object) [
-            'id' => request('a'),
-            'name' => self::SKILLS[(int) request('a')]
+            'id' => $pop[0],
+            'name' => self::SKILLS[$pop[0]]
         ];
 
         $opB = (object) [
-            'id' => request('b'),
-            'name' => self::SKILLS[(int) request('b')]
+            'id' => $pop[1],
+            'name' => self::SKILLS[$pop[1]]
         ];
 
         // dd($opA, $opB);
@@ -123,20 +123,9 @@ class SkillController extends Controller
             'skillScores' => $skillScores
         ]);
 
-        // Pop new set from driver
-        $schedule = session()->get('compareSchedule');
-
-        $popset = array_pop($schedule);
-
-        session([
-            'compareSchedule' => $schedule
-        ]);
-
-        if ($popset) {
-            return redirect()->route('skills.compare', [
-                'a' => $popset[0],
-                'b' => $popset[1]
-            ]);
+        // If has rest set to compare
+        if (!empty(session()->get('compareSchedule'))) {
+            return redirect()->route('skills.compare');
         }
 
         return redirect(route('skills.index'));

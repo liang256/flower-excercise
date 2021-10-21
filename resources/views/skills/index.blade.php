@@ -5,6 +5,7 @@
         <div class="card-header">
             <h1>Skills Index</h1>
         </div>
+        @if(!empty($skillScores))
         <div class="card-body">
             <table class="table table-dark">
                 <thead>
@@ -31,6 +32,8 @@
                 </tbody>
             </table>
         </div>
+        @endif
+        @if(!empty($compareResult))
         <div class="card-body">
             <table class="table table-dark">
                 <thead>
@@ -49,12 +52,11 @@
                 </tbody>
             </table>
         </div>
+        @endif
+
         <div class="card-footer">
             <a class="btn btn-primary" 
-                href="{{ route('skills.compare', [
-                    'a' => $set[0],
-                    'b' => $set[1]
-                ]) }}"
+                href="{{ route('skills.compare') }}"
             >
                 Start to compare
             </a>
