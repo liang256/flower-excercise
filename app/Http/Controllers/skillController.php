@@ -42,7 +42,9 @@ class SkillController extends Controller
     {
         // If schedule empty, rebuild one and refresh score and compare-result sessions
         // else pop out one set from the schedule
-        if (empty(session()->get('compareSchedule'))) {
+        if (!empty(session()->has('set'))) {
+            $pop = session()->get('set');
+        } elseif (empty(session()->get('compareSchedule'))) {
             $list = self::SKILLS;
             $len = count($list);
             $rounds = $len - 1;
@@ -69,13 +71,15 @@ class SkillController extends Controller
             session([
                 'skillScores' => $skillScores,
                 'compareResult' => [],
-                'compareSchedule' => $compareSchedule
+                'compareSchedule' => $compareSchedule,
+                'set' => $pop
             ]);
         } else {
             $schedule = session()->get('compareSchedule');
             $pop =  array_pop($schedule);
             session([
-                'compareSchedule' => $schedule
+                'compareSchedule' => $schedule,
+                'set' => $pop
             ]);
         }
 
@@ -120,9 +124,10 @@ class SkillController extends Controller
 
         session([
             'compareResult' => $result,
-            'skillScores' => $skillScores
+            'skillScores' => $skillScores,
+            'set' => null
         ]);
-
+    
         // If has rest set to compare
         if (!empty(session()->get('compareSchedule'))) {
             return redirect()->route('skills.compare');
